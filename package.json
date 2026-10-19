@@ -1,0 +1,61 @@
+{
+	"name": "@minidesk/n8n-nodes-minidesk",
+	"version": "0.1.0",
+	"description": "n8n nodes for miniDesk: work your support inbox and start workflows on new conversations and customer messages.",
+	"license": "MIT",
+	"homepage": "https://docs.minidesk.ai/integrations/n8n",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"minidesk",
+		"customer support",
+		"helpdesk"
+	],
+	"author": {
+		"name": "miniDesk",
+		"email": "hello@minidesk.ai"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/miniDesk/n8n-nodes-minidesk.git"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"test": "vitest run",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/MiniDeskApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/MiniDesk/MiniDesk.node.js",
+			"dist/nodes/MiniDeskTrigger/MiniDeskTrigger.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "^0.52.5",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^21.1.0",
+		"typescript": "5.9.2",
+		"vitest": "^5.0.5"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	},
+	"packageManager": "pnpm@10.26.1"
+}

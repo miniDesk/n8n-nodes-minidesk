@@ -1,0 +1,6 @@
+dist
+node_modules
+.env*
+*.tgz
+pack-files.txt
+.DS_Store

@@ -1,0 +1,81 @@
+# Publishing only happens from a version tag through npm Trusted Publishing.
+# Trusted Publishing is set up once on npmjs.com for this repo and publish.yml.
+# The tag must match the version in package.json. There is no token to leak.
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: read
+
+# Only one publish can run at a time.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # Full history, so the next step can see main.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Error: Tag $GITHUB_REF_NAME points to a commit that is not on main. Tag a commit on main."
+            exit 1
+          fi
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      # No pnpm cache: this job can publish, so it restores nothing another run saved.
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 'lts/*'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify tag matches package.json version
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_NAME" != "$PACKAGE_VERSION" ]; then
+            echo "Error: Tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION"
+            exit 1
+          fi
+
+      - name: Verify npm version supports Trusted Publishing
+        run: |
+          NPM_VERSION=$(npm --version)
+          REQUIRED_VERSION="11.5.1"
+          if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$NPM_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+            echo "Error: npm version $NPM_VERSION is too old. Need at least $REQUIRED_VERSION for Trusted Publishing."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run build
+        run: pnpm run build
+
+      - name: Check the package contents
+        run: bash scripts/check-pack.sh
+
+      - name: Publish to npm
+        run: pnpm run release

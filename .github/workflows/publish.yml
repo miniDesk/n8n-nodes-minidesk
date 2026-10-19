@@ -1,13 +1,15 @@
-# Publishing only happens from a version tag through npm Trusted Publishing.
-# Trusted Publishing is set up once on npmjs.com for this repo and publish.yml.
-# The tag must match the version in package.json. There is no token to leak.
+# Publishes to npm when main gets a version npm does not have yet. To release,
+# raise "version" in package.json (and add a CHANGELOG entry), then push to main.
+# A push that keeps the same version publishes nothing. Runs on GitHub through
+# npm Trusted Publishing (set up once on npmjs.com for this repo and
+# publish.yml), with provenance. There is no token to leak.
 
 name: Publish
 
 on:
   push:
-    tags:
-      - '*.*.*'
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -25,18 +27,9 @@ jobs:
       id-token: write
 
     steps:
-      # Full history, so the next step can see main.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          fetch-depth: 0
           persist-credentials: false
-
-      - name: Verify the tagged commit is on main
-        run: |
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "Error: Tag $GITHUB_REF_NAME points to a commit that is not on main. Tag a commit on main."
-            exit 1
-          fi
 
       - name: Set up pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -48,15 +41,23 @@ jobs:
           node-version: 'lts/*'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Verify tag matches package.json version
+      # A lookup that fails for another reason reads as "not published": the
+      # publish then fails loudly, because npm never takes the same version twice.
+      - name: Check whether this version is already on npm
+        id: version
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          if [ "$GITHUB_REF_NAME" != "$PACKAGE_VERSION" ]; then
-            echo "Error: Tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION"
-            exit 1
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on npm. Raise the version in package.json to publish a new one."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Publishing $NAME@$VERSION."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Verify npm version supports Trusted Publishing
+        if: steps.version.outputs.publish == 'true'
         run: |
           NPM_VERSION=$(npm --version)
           REQUIRED_VERSION="11.5.1"
@@ -66,16 +67,22 @@ jobs:
           fi
 
       - name: Install dependencies
+        if: steps.version.outputs.publish == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
+        if: steps.version.outputs.publish == 'true'
         run: pnpm test
 
       - name: Run build
+        if: steps.version.outputs.publish == 'true'
         run: pnpm run build
 
       - name: Check the package contents
+        if: steps.version.outputs.publish == 'true'
         run: bash scripts/check-pack.sh
 
+      # Lint, build, then `npm publish` with provenance (n8n-node release in CI).
       - name: Publish to npm
+        if: steps.version.outputs.publish == 'true'
         run: pnpm run release

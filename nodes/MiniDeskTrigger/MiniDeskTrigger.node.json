@@ -1,0 +1,18 @@
+{
+	"node": "@minidesk/n8n-nodes-minidesk.miniDeskTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "Productivity"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.minidesk.ai/integrations/n8n"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.minidesk.ai/integrations/n8n"
+			}
+		]
+	}
+}

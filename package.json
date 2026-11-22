@@ -1,6 +1,6 @@
 {
 	"name": "@minidesk/n8n-nodes-minidesk",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "n8n nodes for miniDesk: work your support inbox and start workflows on new conversations and customer messages.",
 	"license": "MIT",
 	"homepage": "https://docs.minidesk.ai/integrations/n8n",
